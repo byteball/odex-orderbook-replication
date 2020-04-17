@@ -1,0 +1,14 @@
+{
+	"name": "odex-orderbook-replication",
+	"version": "1.0.0",
+	"description": "ODEX order book replication bot",
+	"main": "start.js",
+	"repository": "https://github.com/byteball/odex-orderbook-replication.git",
+	"author": "tony",
+	"license": "MIT",
+	"dependencies": {
+		"ccxt": "^1.25.31",
+		"ccxws": ">=0.31.0",
+		"odex-client": "git+https://github.com/byteball/odex-client.git"
+	}
+}
