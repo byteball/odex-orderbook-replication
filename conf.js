@@ -32,8 +32,8 @@ exports.from_email = '';
 exports.owner_address = process.env.owner_address || '';
 
 // websocket URL of ODEX node we are are connecting to
-exports.odex_ws_url = 'wss://testnet.odex.ooo/socket';
-exports.odex_http_url = 'https://testnet.odex.ooo/api';
+exports.odex_ws_url = process.env.testnet ? 'wss://testnet.odex.ooo/socket' : 'wss://odex.ooo/socket';
+exports.odex_http_url = process.env.testnet ? 'https://testnet.odex.ooo/api' : 'https://odex.ooo/api';
 
 exports.MAX_PRICE_PRECISION = 8;
 exports.aa_address = 'FVRZTCFXIDQ3EYRGQSLE5AMWUQF4PRYJ';
