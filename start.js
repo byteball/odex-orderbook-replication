@@ -272,21 +272,30 @@ async function onSourceOrderbookUpdate(update) {
 
 async function onDestDisconnect() {
 	console.log("will cancel all dest orders after disconnect");
+	let bResetOrders = false;
 	ws_api.once('reset_orders', async () => {
-		console.log("reset_orders: will cancel all my dest orders after reconnect");
-		await cancelAllDestOrders();
-		console.log("done cancelling all my dest orders after reconnect");
-		await ws_api.subscribeOrdersAndTrades(conf.dest_pair);
-		await scanAndUpdateDestBids();
-		await scanAndUpdateDestAsks();
-		console.log("done updating dest orders after reconnect");
-		unlock();
+		bResetOrders = true;
 	});
+	let waitForResetOrders = () => {
+		if (bResetOrders)
+			return;
+		return new Promise(resolve => ws_api.once('reset_orders', resolve));
+	};
 	let unlock = await mutex.lock('update');
 	console.log("got lock to cancel all dest orders after disconnect");
 	await cancelAllTrackedDestOrders(); // this will be actually executed after reconnect
 	assocDestOrdersBySourcePrice = {};
 	console.log("done cancelling all tracked dest orders after disconnect");
+	
+	await waitForResetOrders();
+	console.log("reset_orders: will cancel all my dest orders after reconnect");
+	await cancelAllDestOrders();
+	console.log("done cancelling all my dest orders after reconnect");
+	await ws_api.subscribeOrdersAndTrades(conf.dest_pair);
+	await scanAndUpdateDestBids();
+	await scanAndUpdateDestAsks();
+	console.log("done updating dest orders after reconnect");
+	unlock();
 //	await cancelAllDestOrders(); // just in case we have more orders there but generally this list should lag after tracked dest orders
 }
 
