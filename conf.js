@@ -44,9 +44,19 @@ exports.sourceApiSecret = process.env.sourceApiSecret;
 
 // override in conf.json or .env
 exports.MARKUP = (typeof process.env.MARKUP !== 'undefined') ? parseFloat(process.env.MARKUP) : 2; // %
+exports.bittrex_fees = 0.2; // %
 
-exports.quote_currency = 'BTC_20200701';
-exports.dest_pair = 'GBYTE/' + exports.quote_currency;
+// source
+exports.first_bittrex_pair = 'BTC-GBYTE';
+//exports.second_bittrex_pair = 'USD-BTC'; // comment if not used
+
+
+// destination
+exports.quote_currency = exports.second_bittrex_pair ? 'USDC' : 'BTC_20200701';
+exports.quote_decimals = 6;
+
+// destination base is always GBYTE
+
 
 exports.MIN_QUOTE_BALANCE = 0.001;
 exports.MIN_BASE_BALANCE = 0.01;
