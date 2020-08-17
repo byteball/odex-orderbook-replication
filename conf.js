@@ -51,9 +51,8 @@ exports.first_bittrex_pair = 'BTC-GBYTE';
 //exports.second_bittrex_pair = 'USD-BTC'; // comment if not used
 
 
-// destination
+// destination quote
 exports.quote_currency = exports.second_bittrex_pair ? 'USDC' : 'BTC_20200701';
-exports.quote_decimals = 6;
 
 // destination base is always GBYTE
 

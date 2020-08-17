@@ -25,6 +25,7 @@ let assocDestOrdersBySourcePrice = {};
 let bExiting = false;
 
 const dest_pair = 'GBYTE/' + conf.quote_currency;
+let queued_amount = 0; // positive on the buy side
 
 
 
@@ -486,11 +487,28 @@ async function onDestTrade(matches) {
 
 		size /= 1e9;
 		console.log("detected fill of my " + side + " " + size/1e9 + " GB on dest exchange, will do the opposite on source exchange");
+
+		if (side === 'BUY')
+			size += queued_amount;
+		else
+			size -= queued_amount;
+		if (size < 0) { // flip the sides
+			size = -size;
+			side = (side === 'BUY') ? 'SELL' : 'BUY';
+		}
+		if (size < conf.MIN_SOURCE_ORDER_SIZE) {
+			queued_amount = (side === 'BUY') ? size : -size;
+			console.log("amount " + size + " is less than source min order size, will queue");
+			return unlock();
+		}
+		queued_amount = 0;
+
 		if (second_market){
+
 			if (side === 'BUY'){
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize('BUY', size));
-				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size * (1 - conf.bittrex_fees / 100) );
-	
+				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size);
+				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize('BUY', size) * (1 - conf.bittrex_fees / 100));
+
 			} else {
 				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize('SELL', size));
 				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'BUY', size * (1 - conf.bittrex_fees / 100));
@@ -636,6 +654,7 @@ async function start() {
 	}
 	let tokensBysymbols = exchange.getTokensBySymbol();
 	quote_decimals = tokensBysymbols[conf.quote_currency].decimals;
+	startBittrexWs();
 }
 
 
