@@ -261,7 +261,8 @@ async function onSourceOrderbookUpdate(update) {
 		updateSide('asks', assocSecondMarketSourceAsks);
 	} else
 		throw Error("unsolicited update received " + snapshot.id)
-		await updateDestinationOrdersIfNecessary(bForceUpdate);
+
+	await updateDestinationOrdersIfNecessary(bForceUpdate);
 
 	return unlock();
 }
@@ -338,8 +339,8 @@ async function updateCompositeOrderbook(){
 					truncatedOrders.push(allOrders[i]);
 				} else {
 					if (balance > 0){
-							allOrders[i].size = bInverse ? balance * allOrders[i].price : balance;
-							allOrders[i].price = bInverse ? 1 / allOrders[i].price : allOrders[i].price;
+						allOrders[i].size = bInverse ? balance * allOrders[i].price : balance;
+						allOrders[i].price = bInverse ? 1 / allOrders[i].price : allOrders[i].price;
 						truncatedOrders.push(allOrders[i]);
 					}
 					break;
@@ -530,11 +531,9 @@ function getPivotSize(side, size){
 	let pivot_size = 0;
 
 	for (var i=0; i < arr.length; i++){
-		console.log(arr[i]);
 		if (size > arr[i].size){
 			pivot_size += arr[i].pivot_size;
 			size -= arr[i].size;
-
 		} else {
 			pivot_size += arr[i].pivot_size * (size / arr[i].size);
 			break;
@@ -678,7 +677,7 @@ process.on('beforeExit', async () => {
 	console.error('beforeExit done cancelling orders');
 });
 ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'].forEach(function (sig) {
-    process.on(sig, async () => {
+	process.on(sig, async () => {
 		console.error(sig + ' event');
 		await cancelAllTrackedDestOrdersBeforeExiting();
 		console.error(sig + ' done cancelling orders');
