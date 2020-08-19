@@ -94,7 +94,7 @@ async function cancelPreviousDestOrderIfChanged(side, size, source_price) {
 		return true;
 	if (dest_order.size === 0)
 		throw Error("0-sized dest order " + dest_order.hash);
-	if (dest_order.size === size) { // unchanged
+	if (dest_order.size === size && dest_order.side === side) { // unchanged
 		console.log("order " + size + " GB at source price " + source_price + " already exists");
 		return false;
 	}
@@ -159,7 +159,7 @@ async function updateDestAsks(asks) {
 	let dest_balances = await balances.getBalances();
 	let dest_base_balance_available = (dest_balances.GBYTE || 0)/1e9 - conf.MIN_BASE_BALANCE;
 	let arrNewOrders = [];
-	let bDepleted = dest_base_balance_available <=0;  //asks array is already truncated for a total size not exceeding source balance available
+	let bDepleted = dest_base_balance_available <=0;  //asks array is already truncated for a total size not exceeding quote balance available
 	for (let i = 0; i < asks.length; i++){
 		let ask = asks[i];
 		let source_price = ask.price;
@@ -188,7 +188,7 @@ async function updateDestAsks(asks) {
 }
 
 
-async function removeDestinationOrdersNotMatchingSourceOrders(bUpdateDestAsks, bUpdateDestBids) {
+async function removeDestinationOrdersNotMatchingPriceSourceOrders(bUpdateDestAsks, bUpdateDestBids) {
 
 	const assocAllCompositeOrders = {};
 	for (var i=0; i < compositeSourceBids.length; i++)
@@ -232,7 +232,7 @@ async function updateDestinationOrdersIfNecessary(bForceDestUpdate){
 	}
 
 	if (bUpdateDestAsks || bUpdateDestBids) {
-		await removeDestinationOrdersNotMatchingSourceOrders(bUpdateDestAsks, bUpdateDestBids);
+		await removeDestinationOrdersNotMatchingPriceSourceOrders(bUpdateDestAsks, bUpdateDestBids);
 		// we cancel all removed/updated orders first, then create new ones to avoid overlapping prices and self-trades
 		await createDestOrders(arrNewBuyOrders.concat(arrNewSellOrders));
 	} else 
@@ -298,17 +298,17 @@ async function updateCompositeOrderbook(){
 
 	let source_balances = await source.getBalances();
 
-	const resultingBaseBalanceOnSource = source_balances.free[first_market.base] || 0;
-	const resultingQuoteBalanceOnSource = source_balances.free[second_market ? second_market.quote : first_market.base] || 0;
+	const baseBalanceOnSource = source_balances.free[first_market.base] || 0;
+	const quoteBalanceOnSource = source_balances.free[second_market ? second_market.quote : first_market.quote] || 0;
 
 		if (second_market) {
-			const truncatedBids = truncateBids(true, assocFirstMarketSourceBids, resultingBaseBalanceOnSource);
+			const truncatedBids = truncateBids(true, assocFirstMarketSourceBids, baseBalanceOnSource);
 			compositeSourceBids = combineBooks(truncatedBids, 'bids', assocSecondMarketSourceBids);
 		}
 		else
-			compositeSourceBids = truncateBids(false, assocFirstMarketSourceBids, resultingBaseBalanceOnSource);
+			compositeSourceBids = truncateBids(false, assocFirstMarketSourceBids, baseBalanceOnSource);
 	
-		const truncatedAsks = truncateAsks(second_market ? assocSecondMarketSourceAsks : assocFirstMarketSourceAsks, resultingQuoteBalanceOnSource);
+		const truncatedAsks = truncateAsks(second_market ? assocSecondMarketSourceAsks : assocFirstMarketSourceAsks, quoteBalanceOnSource);
 		if (second_market)
 			compositeSourceAsks = combineBooks(truncatedAsks, 'asks', assocFirstMarketSourceAsks);
 		else
@@ -486,7 +486,7 @@ async function onDestTrade(matches) {
 		let unlock = await mutex.lock('source_trade');
 
 		size /= 1e9;
-		console.log("detected fill of my " + side + " " + size/1e9 + " GB on dest exchange, will do the opposite on source exchange");
+		console.log("detected fill of my " + side + " " + size + " GB on dest exchange, will do the opposite on source exchange");
 
 		if (side === 'BUY')
 			size += queued_amount;
@@ -507,10 +507,10 @@ async function onDestTrade(matches) {
 
 			if (side === 'BUY'){
 				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size);
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize('BUY', size) * (1 - conf.bittrex_fees / 100));
+				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize('bids', size) * (1 - conf.bittrex_fees / 100));
 
 			} else {
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize('SELL', size));
+				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize('asks', size));
 				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'BUY', size * (1 - conf.bittrex_fees / 100));
 			}
 				
@@ -526,7 +526,7 @@ async function onDestTrade(matches) {
 
 function getPivotSize(side, size){
 
-	const arr = side === 'BUY' ? compositeSourceBids : compositeSourceAsks;
+	const arr = side === 'bids' ? compositeSourceBids : compositeSourceAsks;
 	let pivot_size = 0;
 
 	for (var i=0; i < arr.length; i++){
