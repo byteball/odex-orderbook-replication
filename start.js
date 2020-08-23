@@ -302,18 +302,18 @@ async function updateCompositeOrderbook(){
 	const baseBalanceOnSource = source_balances.free[first_market.base] || 0;
 	const quoteBalanceOnSource = source_balances.free[second_market ? second_market.quote : first_market.quote] || 0;
 
-		if (second_market) {
-			const truncatedBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
-			compositeSourceBids = combineBooks(truncatedBids, 'bids', assocSecondMarketSourceBids);
-		}
-		else
-			compositeSourceBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
-	
-		const truncatedAsks = truncateAsks(second_market ? assocSecondMarketSourceAsks : assocFirstMarketSourceAsks, quoteBalanceOnSource);
-		if (second_market)
-			compositeSourceAsks = combineBooks(truncatedAsks, 'asks', assocFirstMarketSourceAsks);
-		else
-			compositeSourceAsks = truncatedAsks;
+	if (second_market) {
+		const truncatedBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
+		compositeSourceBids = combineBooks(truncatedBids, 'bids', assocSecondMarketSourceBids);
+	}
+	else
+		compositeSourceBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
+
+	const truncatedAsks = truncateAsks(second_market ? assocSecondMarketSourceAsks : assocFirstMarketSourceAsks, quoteBalanceOnSource);
+	if (second_market)
+		compositeSourceAsks = combineBooks(truncatedAsks, 'asks', assocFirstMarketSourceAsks);
+	else
+		compositeSourceAsks = truncatedAsks;
 
 	function assocOrders2ArrOrders(type, assocOrders){
 		const orders = [];
@@ -331,21 +331,21 @@ async function updateCompositeOrderbook(){
 	function truncateBids(assocOrders, balance){
 		const allOrders = assocOrders2ArrOrders('bids', assocOrders);
 		const truncatedOrders = [];
-			for (var i = 0; i < allOrders.length; i++){
-				if (balance > allOrders[i].size) {
-					balance -= allOrders[i].size;
-					allOrders[i].size =  allOrders[i].size;
-					allOrders[i].price =  allOrders[i].price;
+		for (var i = 0; i < allOrders.length; i++){
+			if (balance > allOrders[i].size) {
+				balance -= allOrders[i].size;
+				allOrders[i].size =  allOrders[i].size;
+				allOrders[i].price =  allOrders[i].price;
+				truncatedOrders.push(allOrders[i]);
+			} else {
+				if (balance > 0){
+					allOrders[i].size =  balance;
+					allOrders[i].price = allOrders[i].price;
 					truncatedOrders.push(allOrders[i]);
-				} else {
-					if (balance > 0){
-						allOrders[i].size =  balance;
-						allOrders[i].price = allOrders[i].price;
-						truncatedOrders.push(allOrders[i]);
-					}
-					break;
 				}
+				break;
 			}
+		}
 		return truncatedOrders;
 	}
 
@@ -376,47 +376,47 @@ async function updateCompositeOrderbook(){
 		var j = 0;
 		var i = 0; 
 	
-			while (truncatedOrders[i] && orders[j]){
-				const price = orders[j].price * truncatedOrders[i].price;
-				if (type == 'bids') {
-					if (truncatedOrders[i].size * truncatedOrders[i].price >= orders[j].size){
-						combinedOrders.push({
-							price, 
-							size: orders[j].size / truncatedOrders[i].price, 
-							pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
-						});
-						truncatedOrders[i].size -= orders[j].size;
-						j++;
-					} else {
-						combinedOrders.push({
-							price, 
-							size: truncatedOrders[i].size,
-							pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
-						});
-						orders[j].size -= truncatedOrders[i].size * truncatedOrders[i].price;
-						i++;
-					}
+		while (truncatedOrders[i] && orders[j]){
+			const price = orders[j].price * truncatedOrders[i].price;
+			if (type == 'bids') {
+				if (truncatedOrders[i].size * truncatedOrders[i].price >= orders[j].size){
+					combinedOrders.push({
+						price, 
+						size: orders[j].size / truncatedOrders[i].price, 
+						pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
+					});
+					truncatedOrders[i].size -= orders[j].size;
+					j++;
 				} else {
-					if (truncatedOrders[i].size >= orders[j].price * orders[j].size){
-						combinedOrders.push({
-							price,
-							size: orders[j].size,
-							pivot_size: orders[j].price * orders[j].size,
-						})
-	
-						truncatedOrders[i].size -= orders[j].price * orders[j].size;
-						j++;
-					} else {
-						combinedOrders.push({
-							price, 
-							size: truncatedOrders[i].size / orders[j].price,
-							pivot_size: truncatedOrders[i].size, 
-						})
-						orders[j].size -= truncatedOrders[i].size * orders[j].price ;
-						i++;
-					}
+					combinedOrders.push({
+						price, 
+						size: truncatedOrders[i].size,
+						pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
+					});
+					orders[j].size -= truncatedOrders[i].size * truncatedOrders[i].price;
+					i++;
+				}
+			} else {
+				if (truncatedOrders[i].size >= orders[j].price * orders[j].size){
+					combinedOrders.push({
+						price,
+						size: orders[j].size,
+						pivot_size: orders[j].price * orders[j].size,
+					})
+
+					truncatedOrders[i].size -= orders[j].price * orders[j].size;
+					j++;
+				} else {
+					combinedOrders.push({
+						price, 
+						size: truncatedOrders[i].size / orders[j].price,
+						pivot_size: truncatedOrders[i].size, 
+					})
+					orders[j].size -= truncatedOrders[i].size * orders[j].price ;
+					i++;
 				}
 			}
+		}
 		return combinedOrders;
 	}
 
