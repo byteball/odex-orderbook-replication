@@ -303,11 +303,11 @@ async function updateCompositeOrderbook(){
 	const quoteBalanceOnSource = source_balances.free[second_market ? second_market.quote : first_market.quote] || 0;
 
 		if (second_market) {
-			const truncatedBids = truncateBids(true, assocFirstMarketSourceBids, baseBalanceOnSource);
+			const truncatedBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
 			compositeSourceBids = combineBooks(truncatedBids, 'bids', assocSecondMarketSourceBids);
 		}
 		else
-			compositeSourceBids = truncateBids(false, assocFirstMarketSourceBids, baseBalanceOnSource);
+			compositeSourceBids = truncateBids(assocFirstMarketSourceBids, baseBalanceOnSource);
 	
 		const truncatedAsks = truncateAsks(second_market ? assocSecondMarketSourceAsks : assocFirstMarketSourceAsks, quoteBalanceOnSource);
 		if (second_market)
@@ -328,19 +328,19 @@ async function updateCompositeOrderbook(){
 		return orders;
 	}
 
-	function truncateBids(bInverse, assocOrders, balance){
+	function truncateBids(assocOrders, balance){
 		const allOrders = assocOrders2ArrOrders('bids', assocOrders);
 		const truncatedOrders = [];
 			for (var i = 0; i < allOrders.length; i++){
 				if (balance > allOrders[i].size) {
 					balance -= allOrders[i].size;
-					allOrders[i].size = bInverse ? allOrders[i].size * allOrders[i].price : allOrders[i].size;
-					allOrders[i].price = bInverse ? 1 / allOrders[i].price : allOrders[i].price;
+					allOrders[i].size =  allOrders[i].size;
+					allOrders[i].price =  allOrders[i].price;
 					truncatedOrders.push(allOrders[i]);
 				} else {
 					if (balance > 0){
-						allOrders[i].size = bInverse ? balance * allOrders[i].price : balance;
-						allOrders[i].price = bInverse ? 1 / allOrders[i].price : allOrders[i].price;
+						allOrders[i].size =  balance;
+						allOrders[i].price = allOrders[i].price;
 						truncatedOrders.push(allOrders[i]);
 					}
 					break;
@@ -365,6 +365,7 @@ async function updateCompositeOrderbook(){
 				break;
 			}
 		}
+
 		return truncatedOrders;
 	}
 
@@ -374,48 +375,48 @@ async function updateCompositeOrderbook(){
 		const combinedOrders = [];
 		var j = 0;
 		var i = 0; 
-		if (type == 'bids') {
-			while (truncatedOrders[i] && truncatedOrders[i].size > 0 && orders[j] && orders[j].size > 0){
-				const price = orders[j].price / truncatedOrders[i].price;
-				if (truncatedOrders[i].size >= orders[j].size){
-					combinedOrders.push({
-						price, 
-						size: orders[j].size * truncatedOrders[i].price, 
-						pivot_size: truncatedOrders[i].size, 
-					});
-					truncatedOrders[i].size -=  orders[j].size;
-					j++;
-				} else {
-					combinedOrders.push({
-						price, 
-						size: truncatedOrders[i].size * truncatedOrders[i].price,
-						pivot_size: truncatedOrders[i].size, 
-					});
-					orders[j].size -= truncatedOrders[i].size;
-					i++;
-				}
-			}
-		} else {
-			while (truncatedOrders[i] && truncatedOrders[i].size > 0 && orders[j] && orders[j].size > 0){
+	
+			while (truncatedOrders[i] && orders[j]){
 				const price = orders[j].price * truncatedOrders[i].price;
-				if (truncatedOrders[i].size >= orders[j].price * orders[j].size){
-					combinedOrders.push({price,
-						size: orders[j].size,
-						pivot_size: orders[j].price * orders[j].size,
-					})
-
-					truncatedOrders[i].size -= orders[j].price * orders[j].size;
-					j++;
+				if (type == 'bids') {
+					if (truncatedOrders[i].size * truncatedOrders[i].price >= orders[j].size){
+						combinedOrders.push({
+							price, 
+							size: orders[j].size / truncatedOrders[i].price, 
+							pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
+						});
+						truncatedOrders[i].size -= orders[j].size;
+						j++;
+					} else {
+						combinedOrders.push({
+							price, 
+							size: truncatedOrders[i].size,
+							pivot_size: truncatedOrders[i].size * truncatedOrders[i].price, 
+						});
+						orders[j].size -= truncatedOrders[i].size * truncatedOrders[i].price;
+						i++;
+					}
 				} else {
-					combinedOrders.push({price, 
-						size: truncatedOrders[i].size / orders[j].price,
-						pivot_size: truncatedOrders[i].size, 
-					})
-					orders[j].size -= truncatedOrders[i].size * orders[j].price ;
-					i++;
+					if (truncatedOrders[i].size >= orders[j].price * orders[j].size){
+						combinedOrders.push({
+							price,
+							size: orders[j].size,
+							pivot_size: orders[j].price * orders[j].size,
+						})
+	
+						truncatedOrders[i].size -= orders[j].price * orders[j].size;
+						j++;
+					} else {
+						combinedOrders.push({
+							price, 
+							size: truncatedOrders[i].size / orders[j].price,
+							pivot_size: truncatedOrders[i].size, 
+						})
+						orders[j].size -= truncatedOrders[i].size * orders[j].price ;
+						i++;
+					}
 				}
 			}
-		}
 		return combinedOrders;
 	}
 
@@ -508,10 +509,10 @@ async function onDestTrade(matches) {
 
 			if (side === 'BUY'){
 				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size);
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize('bids', size) * (1 - conf.bittrex_fees / 100));
+				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize(compositeSourceBids, size) * (1 - conf.bittrex_fees / 100));
 
 			} else {
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize('asks', size));
+				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize(compositeSourceAsks, size));
 				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'BUY', size * (1 - conf.bittrex_fees / 100));
 			}
 				
@@ -525,9 +526,8 @@ async function onDestTrade(matches) {
 }
 
 
-function getPivotSize(side, size){
+function getPivotSize(arr, size){
 
-	const arr = side === 'bids' ? compositeSourceBids : compositeSourceAsks;
 	let pivot_size = 0;
 
 	for (var i=0; i < arr.length; i++){
