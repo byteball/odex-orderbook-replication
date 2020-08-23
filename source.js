@@ -5,7 +5,6 @@ const mutex = require("ocore/mutex");
 
 let source_balances = null;
 
-let queued_amount = 0; // positive on the buy side
 
 let bittrex = new ccxt.bittrex({
 	apiKey: conf.sourceApiKey,
@@ -13,24 +12,14 @@ let bittrex = new ccxt.bittrex({
 });
 
 
-async function createMarketTx(side, size) {
-	if (side === 'BUY')
-		size += queued_amount;
-	else
-		size -= queued_amount;
-	if (size < 0) { // flip the sides
-		size = -size;
-		side = (side === 'BUY') ? 'SELL' : 'BUY';
-	}
-	if (size < conf.MIN_SOURCE_ORDER_SIZE) {
-		queued_amount = (side === 'BUY') ? size : -size;
-		return console.log("amount " + size + " is less than source min order size, will queue");
-	}
-	queued_amount = 0;
+async function createMarketTx(pair, side, size) {
+
+	if (process.env.testnet)
+		return console.log("testnet: won't send market tx " + pair + " " + side + " " + size);
 	let unlock = await mutex.lock('source_balances');
 	let m_resp = (side === 'BUY')
-		? await bittrex.createMarketBuyOrder('GBYTE/BTC', size)
-		: await bittrex.createMarketSellOrder('GBYTE/BTC', size);
+		? await bittrex.createMarketBuyOrder(pair, size)
+		: await bittrex.createMarketSellOrder(pair, size);
 	console.error('---- m_resp', m_resp);
 	source_balances = await bittrex.fetchBalance();
 	unlock();
