@@ -10,5 +10,8 @@
 		"ccxt": "^1.25.31",
 		"ccxws": ">=0.31.0",
 		"odex-client": "git+https://github.com/byteball/odex-client.git"
+	},
+	"resolutions": {
+		"level-rocksdb": "^4.0.0"
 	}
 }
