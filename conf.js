@@ -52,7 +52,7 @@ exports.first_bittrex_pair = 'BTC-GBYTE';
 
 
 // destination quote
-exports.quote_currency = exports.second_bittrex_pair ? 'USDC' : 'BTC_20200701';
+exports.quote_currency = process.env.testnet ? (exports.second_bittrex_pair ? 'USDC' : 'BTC_20200701') : (exports.second_bittrex_pair ? 'OUSD' : 'OBIT');
 
 // destination base is always GBYTE
 
