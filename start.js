@@ -640,15 +640,15 @@ async function start() {
 
 	first_market = {
 		id: conf.first_bittrex_pair, // remote_id used by the exchange
-		base: conf.first_bittrex_pair.split('-')[1], // standardized base symbol for Bitcoin
-		quote: conf.first_bittrex_pair.split('-')[0], // standardized quote symbol for Tether
+		base: conf.first_bittrex_pair.split('-')[0], // standardized base symbol for Bitcoin
+		quote: conf.first_bittrex_pair.split('-')[1], // standardized quote symbol for Tether
 	};
 
 	if (conf.second_bittrex_pair){
 		second_market = {
 			id: conf.second_bittrex_pair, // remote_id used by the exchange
-			base: conf.second_bittrex_pair.split('-')[1], // standardized base symbol for Bitcoin
-			quote: conf.second_bittrex_pair.split('-')[0], // standardized quote symbol for Tether
+			base: conf.second_bittrex_pair.split('-')[0], // standardized base symbol for Bitcoin
+			quote: conf.second_bittrex_pair.split('-')[1], // standardized quote symbol for Tether
 		};
 	}
 	let tokensBysymbols = exchange.getTokensBySymbol();

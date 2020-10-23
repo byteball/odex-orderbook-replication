@@ -47,8 +47,8 @@ exports.MARKUP = (typeof process.env.MARKUP !== 'undefined') ? parseFloat(proces
 exports.bittrex_fees = 0.2; // %
 
 // source
-exports.first_bittrex_pair = 'BTC-GBYTE';
-//exports.second_bittrex_pair = 'USD-BTC'; // comment if not used
+exports.first_bittrex_pair = 'GBYTE-BTC';
+//exports.second_bittrex_pair = 'BTC-USD'; // comment if not used
 
 
 // destination quote
