@@ -508,12 +508,20 @@ async function onDestTrade(matches) {
 		if (second_market){
 
 			if (side === 'BUY'){
-				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size);
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize(compositeSourceBids, size) * (1 - conf.bittrex_fees / 100));
+				const resp = await source.createMarketTx(first_market.base + '/' + first_market.quote, 'SELL', size);
+				if (resp.status === 'closed')
+					await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', resp.cost - resp.fee.cost);
+				else
+					console.log(`first market SELL failed`, resp);
+			//	await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'SELL', getPivotSize(compositeSourceBids, size) * (1 - conf.bittrex_fees / 100));
 
 			} else {
-				await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize(compositeSourceAsks, size));
-				await source.createMarketTx(first_market.base + '/' + first_market.quote, 'BUY', size * (1 - conf.bittrex_fees / 100));
+			//	await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', getPivotSize(compositeSourceAsks, size));
+				const resp = await source.createMarketTx(first_market.base + '/' + first_market.quote, 'BUY', size);
+				if (resp.status === 'closed')
+					await source.createMarketTx(first_market.quote + '/' + second_market.quote, 'BUY', resp.cost - resp.fee.cost);
+				else
+					console.log(`first market BUY failed`, resp);
 			}
 				
 		} else {

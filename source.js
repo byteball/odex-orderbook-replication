@@ -23,6 +23,7 @@ async function createMarketTx(pair, side, size) {
 	console.error('---- m_resp', m_resp);
 	source_balances = await bittrex.fetchBalance();
 	unlock();
+	return m_resp;
 }
 
 async function getBalances() {
